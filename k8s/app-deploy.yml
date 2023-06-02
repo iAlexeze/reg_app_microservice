@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reg-app
+spec:
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      name: task-app-pod
+      labels:
+        app: test-app
+    spec:
+     # imagePullSecrets:
+      #  - name: ialex-cred
+      containers:
+      - name: task-app-cont
+        image: oladayur/cicd-demo2:v2
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - secretRef:
+            name: reg-sec
+        imagePullPolicy: IfNotPresent
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reg-svc
+spec:
+  ports:
+  - nodePort: 32000
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: test-app
+  type: NodePort
+status:
+  loadBalancer: {}
+
+---
+apiVersion: v1
+data:
+  MONGO_INITDB_ROOT_PASSWORD: YWRtaW5AMTIz
+  MONGO_INITDB_ROOT_USERNAME: YWRtaW4=
+  MONGO_INITDB_ROOT_HOSTNAME: bW9uZ29kYi1zdmM=
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: reg-sec
+
+---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: mongodb-rs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      name: mongodb-pod
+      labels:
+        app: mongodb
+    spec:
+      volumes:
+        - name: mongo-vol
+          hostPath: 
+            path: /tmp/mongo
+      containers:
+        - name: mongodb-con
+          image: mongo
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+          - name: mongo-vol
+            mountPath: /data/db
+          envFrom:
+          - secretRef:
+              name: mongo-sec
+          imagePullPolicy: IfNotPresent
+
+---
+apiVersion: v1
+data:
+  MONGO_INITDB_ROOT_PASSWORD: YWRtaW5AMTIz
+  MONGO_INITDB_ROOT_USERNAME: YWRtaW4=    
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: mongo-sec
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  name: mongodb-svc
+spec:
+  ports:
+  - port: 27017
+    protocol: TCP
+    targetPort: 27017
+  selector:
+    app: mongodb
+status:
+  loadBalancer: {}
+
+---
+
